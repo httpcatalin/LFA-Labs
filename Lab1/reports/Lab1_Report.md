@@ -1,4 +1,4 @@
-# Grammar to Finite Automaton Conversion - Variant 15
+# Lab 1: Grammar to Finite Automaton Conversion - Variant 15
 
 ### Course: Formal Languages & Finite Automata
 
@@ -8,93 +8,80 @@
 
 ## Theory
 
-A formal grammar is defined as a 4-tuple \( G = (V_N, V_T, P, S) \), where:
+A formal grammar is a mathematical framework used to describe and generate languages. Formally, a grammar is defined as a 4-tuple $G = (V_N, V_T, P, S)$, where:
 
-- \(V_N\) is the set of non-terminals,
-- \(V_T\) is the set of terminals,
-- \(P\) is the set of production rules,
-- \(S\) is the start symbol.
+- $V_N$ is the finite set of **non-terminal** symbols (variables that can be expanded),
+- $V_T$ is the finite set of **terminal** symbols (the actual characters that appear in generated strings),
+- $P$ is a finite set of **production rules** of the form $\alpha \to \beta$,
+- $S \in V_N$ is the **start symbol** from which derivation begins.
 
-For this laboratory work, the implemented grammar is right-linear and has:
+A grammar is called **right-linear** (Type 3 in the Chomsky hierarchy) if every production rule has one of two forms: $A \to aB$ or $A \to a$, where $A, B \in V_N$ and $a \in V_T$. Right-linear grammars generate exactly the class of **regular languages**, meaning there is a direct correspondence between them and finite automata.
 
-- **VN** = {S, D, E, F, L}
-- **VT** = {a, b, c, d}
+A **finite automaton (FA)** is a 5-tuple $M = (Q, \Sigma, \delta, q_0, F)$:
 
-**Productions**:
+- $Q$ is a finite set of states,
+- $\Sigma$ is the input alphabet,
+- $\delta: Q \times \Sigma \to \mathcal{P}(Q)$ is the transition function,
+- $q_0 \in Q$ is the start state,
+- $F \subseteq Q$ is the set of accepting (final) states.
 
-- S -> aD
-- D -> bE
-- E -> cF | dL
-- F -> dD
-- L -> aL | bL | c
-
-Because the grammar is right-linear, it can be converted into a finite automaton.
-In this lab, the idea was not only to write code that works, but to understand why each production can be seen as a transition and how this theory is used in practice.
+The key theoretical insight behind this lab is that every right-linear grammar can be transformed into an equivalent finite automaton. Each non-terminal becomes a state, each terminal-driven production becomes a transition, and productions that end in a single terminal (like $L \to c$) are handled by introducing a dedicated final state. This makes it possible to check whether a given string belongs to the language by simulating the automaton — starting from the initial state, consuming one symbol at a time, and checking if we end in an accepting state.
 
 ---
 
 ## Objectives
 
-- Implement a `Grammar` class for word generation and conversion to finite automaton.
-- Implement a `FiniteAutomaton` class for language membership checking.
-- Demonstrate generated words and validation results in `main.py`.
-- Better understand the connection between regular grammars and automata by implementing both sides.
+- Implement a `Grammar` class capable of generating valid words and converting itself to a finite automaton.
+- Implement a `FiniteAutomaton` class that simulates state transitions and checks whether a string belongs to the language.
+- Demonstrate correctness by generating words from the grammar and validating them against the automaton.
+- Develop a practical understanding of the connection between regular grammars and finite automata.
 
 ---
 
-## Laboratory Work Description
+## Variant 15 — Grammar Definition
 
-In this laboratory, I started from the grammar definition and then tried to represent it as clearly as possible in Python.
-At first, the implementation looked simple on paper, but when I connected all components (`Grammar`, conversion method, automaton simulation, and tests), I realized that small details matter a lot.
+```
+VN = {S, D, E, F, L}
+VT = {a, b, c, d}
+P:
+  S -> aD
+  D -> bE
+  E -> cF | dL
+  F -> dD
+  L -> aL | bL | c
+```
 
-The implementation is split into three files:
+The start symbol is $S$. Because every production is of the form $A \to aB$ or $A \to a$ (right-linear), this grammar is regular and can be converted into a finite automaton.
 
-- `grammar.py` - definition of the `Grammar` class.
-- `finite_automaton.py` - definition of the `FiniteAutomaton` class.
-- `main.py` - grammar construction, generation, and testing.
+---
 
-### Grammar class
+## Implementation Description
 
-The `Grammar` class stores `vn`, `vt`, `productions`, and `start_symbol`.
+The implementation is split into three files that work together:
 
-The `generate_string()` method creates valid words deterministically using an internal counter (`self._counter`) and pattern composition:
+- `grammar.py` — the `Grammar` class, responsible for string generation and conversion to a finite automaton.
+- `finite_automaton.py` — the `FiniteAutomaton` class, responsible for simulating transitions and validating strings.
+- `main.py` — the driver that constructs the grammar, generates words, and tests them.
 
-- fixed prefix `ab`,
-- optional repeated block `cdb`,
-- mandatory `d`,
-- optional tail of `a`,
-- final `c`.
+### Grammar Class
 
-The `to_finite_automaton()` method converts productions into transitions. For terminal-only productions (like `L -> c`), it adds a transition to a synthetic final state `Qf`.
+The `Grammar` class stores the four components of a grammar ($V_N$, $V_T$, $P$, and $S$) and provides two key methods.
 
-From my perspective as a student, this conversion step was the most important part of the lab because it forced me to think in terms of states and transitions, not just strings.
+**`generate_string()`** builds valid words deterministically using an internal counter. Each call produces a different string that follows the grammar's structure. The approach uses pattern composition: a fixed prefix `ab`, an optional repeated block `cdb` (which corresponds to applying rules $E \to cF$ and $F \to dD$ and $D \to bE$ in a loop), a mandatory `d` (entering the $L$ branch via $E \to dL$), an optional tail of `a` or `b` symbols (the self-loop $L \to aL \mid bL$), and a final `c` (the terminal rule $L \to c$). This ensures every generated string is derivable from $S$ while giving variety across calls.
 
-### FiniteAutomaton class
+**`to_finite_automaton()`** converts the grammar into a finite automaton by mapping each production to a transition. For a production like $S \to aD$, it creates the transition $\delta(S, a) = D$. For terminal-only productions like $L \to c$, it creates a transition to a synthetic final state $Q_f$, since the derivation ends there. The resulting automaton has states for each non-terminal plus $Q_f$, uses the terminals as its alphabet, and has $S$ as the start state.
 
-The automaton stores transitions as sets of target states (`dict[state][symbol] -> set(states)`), so matching is done with a set of current states. The method `string_belong_to_language()`:
+### FiniteAutomaton Class
 
-- starts from `{start_state}`,
-- updates the frontier for each input symbol,
-- rejects if no state is reachable,
-- accepts if any reachable state is final after consuming all symbols.
+The `FiniteAutomaton` class stores transitions internally as a nested dictionary where $\delta(q, a)$ maps to a set of target states. This representation naturally supports non-determinism (multiple targets per symbol), even though the grammar in this variant produces a deterministic automaton.
 
-I chose this approach because it is flexible and works naturally if a state can have multiple transitions for the same symbol.
+The **`string_belong_to_language()`** method simulates the automaton. It maintains a frontier of current states (starting from $\{q_0\}$) and, for each input symbol, computes the set of all reachable next states. If at any point the frontier becomes empty, the string is rejected immediately. After consuming all symbols, the string is accepted if and only if at least one state in the frontier is a final state.
 
-## Difficulties Encountered
+This set-based simulation approach was chosen because it generalizes cleanly — it works correctly even if a state has multiple transitions for the same symbol, which becomes relevant in Lab 2 when dealing with non-deterministic automata.
 
-During this laboratory, the hardest part was making sure that the grammar and automaton behaviors were perfectly aligned.
+### Main Driver
 
-What I found difficult:
-
-- Making sure each production rule is translated correctly to a transition.
-- Handling final productions (like `L -> c`) in code by introducing a dedicated final state (`Qf`).
-- Keeping the report synchronized with the actual code and output, because even small code changes can make old explanations wrong.
-
-What helped me solve these issues:
-
-- Printing multiple generated words and validating them immediately.
-- Testing both positive and negative examples.
-- Re-reading the grammar-to-automaton correspondence rule by rule.
+The `main.py` file constructs the Variant 15 grammar, generates 5 words, and then tests both those generated words and several hand-crafted invalid strings against the automaton. This serves as a validation step: generated words should all be accepted, while strings like `abccc`, `ac`, and `abd` should be rejected because they don't follow any valid derivation path.
 
 ---
 
@@ -161,13 +148,15 @@ def string_belong_to_language(self, input_string):
 
 ## Results
 
-From the language structure induced by the grammar, accepted words follow:
+The language generated by the grammar follows the pattern:
 
 ```text
 ab(cdb)*d(a|b)*c
 ```
 
-Program output (`python3 -u Lab1/src/main.py`):
+This means every valid string starts with `ab`, optionally repeats the `cdb` block (the $E \to cF \to cdD \to cdbE$ loop), then transitions through `d` into the $L$ branch, optionally adds any number of `a` or `b` symbols, and terminates with `c`.
+
+Program output:
 
 ```text
 word 1: abdc
@@ -186,6 +175,28 @@ ac -> False
 abd -> False
 ```
 
-The output confirms that generated words are accepted, while invalid samples (`abccc`, `ac`, `abd`) are rejected.
+All five generated words are correctly accepted by the automaton. The invalid test strings are rejected for the following reasons:
 
-Overall, this laboratory helped me understand much better how formal language theory becomes executable logic. Implementing both classes made the topic clearer than only studying it theoretically.
+- `abccc` — after `abc`, the only valid continuation requires `F -> dD`, but `c` is not valid for state $F$.
+- `ac` — after `a`, the automaton is in state $D$, which requires `b` next, not `c`.
+- `abd` — after `abd`, the automaton is in state $L$, which can accept `a`, `b`, or `c`, but `d` is not in its transition set. And the string simply ends without reaching $c$.
+
+---
+
+## Difficulties Encountered
+
+The hardest part of this lab was ensuring perfect alignment between the grammar's theoretical definition and the automaton's behavior in code. Specifically:
+
+- **Handling terminal-only productions** like $L \to c$ required careful thought. The solution was introducing a synthetic final state $Q_f$ that has no outgoing transitions. Without it, the automaton would have no way to "accept" after consuming the last terminal.
+- **Making string generation correct and diverse** was a balancing act. Hardcoding a single valid string would be trivial, but generating multiple distinct strings that all follow the grammar required a structured approach with the counter-based pattern composition.
+- **Keeping the report synchronized with actual code** was challenging because even small refactors could invalidate earlier explanations or output examples.
+
+---
+
+## Conclusions
+
+This laboratory demonstrated how a right-linear grammar can be systematically converted into a finite automaton. The Grammar class generates valid strings by following the production rules, and the FiniteAutomaton class validates them by simulating state transitions. Both components produce consistent results: generated strings are accepted, and strings that violate the grammar's structure are correctly rejected. The implementation reinforced the theoretical equivalence between regular grammars and finite automata in a practical, executable way.
+
+## References
+
+- Course materials: Formal Languages & Finite Automata, TUM

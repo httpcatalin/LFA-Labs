@@ -7,17 +7,15 @@ class FiniteAutomaton:
         self.final_states = final_states
 
     def string_belong_to_language(self, input_string):
-        current_states = {self.start_state}
+        current = {self.start_state}
         for symbol in input_string:
             next_states = set()
-            for state in current_states:
-                state_transitions = self.transitions.get(state, {})
-                for target in state_transitions.get(symbol, set()):
-                    next_states.add(target)
-            current_states = next_states
-            if not current_states:
+            for state in current:
+                next_states.update(self.transitions.get(state, {}).get(symbol, set()))
+            current = next_states
+            if not current:
                 return False
-        return any(state in self.final_states for state in current_states)
+        return bool(current & self.final_states)
 
     def is_deterministic(self):
         for state in self.states:
@@ -33,62 +31,75 @@ class FiniteAutomaton:
         vt = set(self.alphabet)
         productions = {}
         for state in self.states:
-            productions[state] = []
-            for symbol, targets in self.transitions.get(state, {}).items():
-                for target in targets:
+            prods = []
+            for symbol in sorted(self.alphabet):
+                targets = self.transitions.get(state, {}).get(symbol, set())
+                for target in sorted(targets):
+                    prods.append([symbol, target])
                     if target in self.final_states:
-                        productions[state].append([symbol])
-                    else:
-                        productions[state].append([symbol, target])
-            if state in self.final_states:
-                productions[state].append([])
+                        prods.append([symbol])
+            productions[state] = prods
         return Grammar(vn, vt, productions, self.start_state)
 
     def ndfa_to_dfa(self):
         from collections import deque
-        dfa_states = []
-        dfa_transitions = {}
-        dfa_final_states = set()
-        queue = deque()
-        start_set = frozenset([self.start_state])
-        dfa_states.append(start_set)
-        queue.append(start_set)
-        state_map = {start_set: 'q0'}
-        state_counter = 1
-        while queue:
-            current_set = queue.popleft()
-            current_name = state_map[current_set]
-            dfa_transitions[current_name] = {}
-            for symbol in self.alphabet:
-                next_set = set()
-                for state in current_set:
-                    targets = self.transitions.get(state, {}).get(symbol, set())
-                    next_set.update(targets)
-                if next_set:
-                    next_frozenset = frozenset(next_set)
-                    if next_frozenset not in state_map:
-                        state_map[next_frozenset] = f'q{state_counter}'
-                        state_counter += 1
-                        dfa_states.append(next_frozenset)
-                        queue.append(next_frozenset)
-                    dfa_transitions[current_name][symbol] = state_map[next_frozenset]
-            if any(state in self.final_states for state in current_set):
-                dfa_final_states.add(current_name)
-        dfa_alphabet = self.alphabet
-        dfa_start_state = 'q0'
-        return FiniteAutomaton(set(state_map.values()), dfa_alphabet, dfa_transitions, dfa_start_state, dfa_final_states)
 
-    def to_graphviz(self):
+        def state_name(state_set):
+            return "{" + ",".join(sorted(state_set)) + "}"
+
+        start = frozenset([self.start_state])
+        queue = deque([start])
+        visited = {start}
+        dfa_transitions = {}
+        dfa_final = set()
+
+        while queue:
+            current = queue.popleft()
+            name = state_name(current)
+            dfa_transitions[name] = {}
+            for symbol in sorted(self.alphabet):
+                next_set = set()
+                for s in current:
+                    next_set.update(self.transitions.get(s, {}).get(symbol, set()))
+                if next_set:
+                    nf = frozenset(next_set)
+                    nn = state_name(nf)
+                    dfa_transitions[name][symbol] = {nn}
+                    if nf not in visited:
+                        visited.add(nf)
+                        queue.append(nf)
+            if current & self.final_states:
+                dfa_final.add(name)
+
+        dfa_states = {state_name(s) for s in visited}
+        return FiniteAutomaton(dfa_states, self.alphabet, dfa_transitions,
+                               state_name(start), dfa_final)
+
+    def draw_graph(self, filename, title="Finite Automaton"):
         import graphviz
-        dot = graphviz.Digraph()
-        for state in self.states:
-            if state in self.final_states:
-                dot.node(state, shape='doublecircle')
+        dot = graphviz.Digraph(format="png")
+        dot.attr(rankdir="LR", label=title, fontsize="16")
+        dot.node("", shape="none", width="0", height="0")
+        dot.edge("", self.start_state)
+
+        for state in sorted(self.states):
+            if state in self.final_states and state == self.start_state:
+                dot.node(state, shape="doublecircle", style="filled", fillcolor="lightyellow")
+            elif state in self.final_states:
+                dot.node(state, shape="doublecircle", style="filled", fillcolor="lightgreen")
+            elif state == self.start_state:
+                dot.node(state, shape="circle", style="filled", fillcolor="lightblue")
             else:
-                dot.node(state)
-        dot.node(self.start_state, color='green')
-        for state, trans in self.transitions.items():
-            for symbol, targets in trans.items():
-                for target in targets:
-                    dot.edge(state, target, label=symbol)
-        return dot
+                dot.node(state, shape="circle")
+
+        edges = {}
+        for state in sorted(self.states):
+            for symbol in sorted(self.alphabet):
+                targets = self.transitions.get(state, {}).get(symbol, set())
+                for target in sorted(targets):
+                    edges.setdefault((state, target), []).append(symbol)
+
+        for (src, dst), symbols in sorted(edges.items()):
+            dot.edge(src, dst, label=",".join(symbols))
+
+        dot.render(filename, cleanup=True)

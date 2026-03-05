@@ -4,68 +4,26 @@ class Grammar:
         self.vt = vt
         self.productions = productions
         self.start_symbol = start_symbol
-        self._counter = 0
-
-    def generate_string(self):
-        k = self._counter
-        self._counter += 1
-        loop_count = k % 3
-        tail_len = k % 4
-        parts = ["a", "b"]
-        for _ in range(loop_count):
-            parts.extend(["c", "d", "b"])
-        parts.append("d")
-        parts.extend(["a"] * tail_len)
-        parts.append("c")
-        return "".join(parts)
-
-    def to_finite_automaton(self):
-        from finite_automaton import FiniteAutomaton
-
-        states = set(self.vn)
-        final_state = "Qf"
-        states.add(final_state)
-        alphabet = set(self.vt)
-        transitions = {}
-        for left, rights in self.productions.items():
-            for right in rights:
-                if len(right) == 1:
-                    symbol = right[0]
-                    transitions.setdefault(left, {}).setdefault(symbol, set()).add(final_state)
-                else:
-                    symbol = right[0]
-                    next_state = right[1]
-                    transitions.setdefault(left, {}).setdefault(symbol, set()).add(next_state)
-        start_state = self.start_symbol
-        final_states = {final_state}
-        return FiniteAutomaton(states, alphabet, transitions, start_state, final_states)
 
     def classify_chomsky(self):
-        is_regular = True
-        is_context_free = True
-        is_context_sensitive = True
+        is_right_linear = True
+
         for left, rights in self.productions.items():
             if left not in self.vn:
-                is_context_free = False
-                is_regular = False
+                return "Type 0 (Unrestricted)"
+
             for right in rights:
                 if len(right) == 0:
                     continue
-                if len(right) == 1:
-                    if right[0] not in self.vt and right[0] not in self.vn:
-                        is_regular = False
+                elif len(right) == 1:
+                    if right[0] not in self.vt:
+                        is_right_linear = False
                 elif len(right) == 2:
                     if not (right[0] in self.vt and right[1] in self.vn):
-                        is_regular = False
+                        is_right_linear = False
                 else:
-                    is_regular = False
-                if len(right) > 0 and len(left) > len(right):
-                    is_context_sensitive = False
-        if is_regular:
-            return 3
-        elif is_context_free:
-            return 2
-        elif is_context_sensitive:
-            return 1
-        else:
-            return 0
+                    is_right_linear = False
+
+        if is_right_linear:
+            return "Type 3 (Regular)"
+        return "Type 2 (Context-Free)"
