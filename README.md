@@ -25,4 +25,12 @@ Lab2/
     images/
         nfa_variant7.png
         dfa_variant7.png
+
+Lab3/
+    reports/
+        Lab3_Report.md
+    src/
+        token.py
+        lexer.py
+        main.py
 ```
