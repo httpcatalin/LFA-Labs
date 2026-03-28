@@ -1,1 +1,4 @@
 .DS_STORE
+*.pyc
+*.pyc
+/Lab3/src/__pycache__
