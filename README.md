@@ -33,4 +33,18 @@ Lab3/
         token.py
         lexer.py
         main.py
+
+Lab4/
+    reports/
+        Lab4_Report.md
+    src/
+        regex_engine.py
+        main.py
+
+Lab5/
+    reports/
+        Lab5_Report.md
+    src/
+        grammar.py
+        main.py
 ```
