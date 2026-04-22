@@ -36,7 +36,7 @@ To transform a CFG into CNF, a standard normalization pipeline is used:
 1. Understand Chomsky Normal Form and why it is useful.
 2. Implement all required grammar normalization stages.
 3. Execute and test the conversion for Variant 7.
-4. Implement bonus support for custom grammar input, not only the variant grammar.
+4. Keep execution simple: run Variant 7 directly without command-line arguments.
 
 ---
 
@@ -131,21 +131,15 @@ During CNF conversion:
 
 This guarantees final productions satisfy CNF constraints.
 
-### 4. Bonus: Generic Input Grammar
+### 4. Execution Style
 
-The script accepts a custom grammar from JSON:
+For this task, the implementation runs directly on Variant 7 and does not require command-line arguments.
 
-```bash
-python main.py --grammar-file path/to/grammar.json
-```
-
-A template for this JSON format is generated with:
+Run command:
 
 ```bash
-python main.py --show-json-template
+python main.py
 ```
-
-So the implementation is not restricted to Variant 7 only.
 
 ---
 
@@ -227,9 +221,19 @@ def to_cnf(self) -> "ContextFreeGrammar":
         for left, rights in self.productions.items()
     }
 
-    terminal_aliases = {}
+    terminal_aliases: dict[str, str] = {}
 
-    # replace terminals in long productions, then binarize long RHS
+    def new_non_terminal(prefix: str) -> str:
+        index = 1
+        while True:
+            candidate = f"{prefix}{index}"
+            if candidate not in vn and candidate not in self.vt:
+                vn.add(candidate)
+                productions.setdefault(candidate, set())
+                return candidate
+            index += 1
+
+    # replace terminals in long productions and binarize RHS with length > 2
     # ...
 
     return ContextFreeGrammar(vn, set(self.vt), cnf_productions, self.start_symbol)
@@ -281,14 +285,14 @@ Grammar is CNF: True
 ## Difficulties Encountered
 
 1. Correctly handling nullable combinations during epsilon elimination without introducing invalid empty rules.
-2. Preserving deterministic output while still supporting generic grammars.
+2. Preserving deterministic and readable output across all transformation stages.
 3. Converting long mixed productions like `bAaAb` into valid binary CNF form while keeping the transformation readable.
 
 ---
 
 ## Conclusion
 
-The laboratory requirements were implemented end-to-end: all normalization stages were executed in the specified order, intermediate grammars were displayed, and the final grammar was validated as CNF. The script also supports custom JSON input, satisfying the bonus objective of handling arbitrary grammars beyond Variant 7.
+The laboratory requirements were implemented end-to-end: all normalization stages were executed in the specified order, intermediate grammars were displayed, and the final grammar was validated as CNF. The final Lab 5 script now runs directly on Variant 7 with no command-line arguments, which keeps execution straightforward for evaluation.
 
 ## References
 

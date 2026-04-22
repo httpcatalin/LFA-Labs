@@ -1,6 +1,4 @@
-import argparse
-
-from grammar import ContextFreeGrammar, build_variant_7_grammar, json_input_template
+from grammar import ContextFreeGrammar, build_variant_7_grammar
 
 
 def print_header(title: str):
@@ -15,36 +13,9 @@ def print_stage(index: int, title: str, grammar: ContextFreeGrammar):
     print(f"Production count: {grammar.production_count()}")
 
 
-def load_input_grammar(args) -> tuple[ContextFreeGrammar, str]:
-    if args.grammar_file:
-        grammar = ContextFreeGrammar.from_json_file(args.grammar_file)
-        return grammar, "Custom grammar loaded from JSON"
-
-    grammar = build_variant_7_grammar()
-    return grammar, "Variant 7 grammar"
-
-
 def main():
-    parser = argparse.ArgumentParser(
-        description="Normalize a context-free grammar to Chomsky Normal Form"
-    )
-    parser.add_argument(
-        "--grammar-file",
-        type=str,
-        help="Path to JSON grammar file",
-    )
-    parser.add_argument(
-        "--show-json-template",
-        action="store_true",
-        help="Print JSON template for custom grammar input",
-    )
-    args = parser.parse_args()
-
-    if args.show_json_template:
-        print(json_input_template())
-        return
-
-    grammar, label = load_input_grammar(args)
+    grammar = build_variant_7_grammar()
+    label = "Variant 7 grammar"
 
     print_header("LAB 5 - CHOMSKY NORMAL FORM")
     print(label)
