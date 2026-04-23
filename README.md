@@ -47,4 +47,14 @@ Lab5/
     src/
         grammar.py
         main.py
+
+Lab6/
+    reports/
+        Lab6_Report.md
+    src/
+        ast_nodes.py
+        lexer.py
+        main.py
+        parser.py
+        tokens.py
 ```
